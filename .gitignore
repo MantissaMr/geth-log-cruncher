@@ -1,1 +1,4 @@
 /target
+# Ignore sample data and test files
+*.log
+*.txt
