@@ -1,6 +1,12 @@
-use clap::Parser;
+
+
 use std::path::Path;
 use std::process;
+use std::fs::File;
+use std::io::{self, BufRead};
+
+
+use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -38,9 +44,20 @@ fn run(args: Cli) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Open the file
-    let _file = std::fs::File::open(path)?;
+    let file = File::open(path)?;
 
     println!("Successfully opened the log file!");
+
+    // Create a buffered reader
+    let reader = io::BufReader::new(file);
+    
+    let mut line_count = 0;
+    for line in reader.lines() {
+        let _line = line?;
+        line_count += 1;
+    }
+    
+    println!("Total number of lines in the log file: {}", line_count); 
 
     Ok(())
 }
