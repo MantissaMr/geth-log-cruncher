@@ -8,6 +8,7 @@ use clap::Parser;
 use lazy_static::lazy_static;
 use regex::Regex;
 use chrono::{DateTime, Datelike, Local, NaiveDateTime};
+use std::collections::HashMap;
 
 //DATA STRUCTURES 
 #[derive(Debug)]
@@ -15,14 +16,19 @@ struct LogEntry {
     level: String,
     timestamp: DateTime<Local>,
     message: String,
+    details: HashMap<String, String>,
     // more fields to be added as needed 
 }
 
 //GLOBAL VARIABLES
 lazy_static! {
+    // Regex pattern to match log lines
     static ref LOG_REGEX: Regex = Regex::new(
         r"^(?P<level>INFO|WARN|ERROR|DEBUG|TRACE)\s*\[(?P<timestamp>.+?)\]\s+(?P<message>.*)"
     ).unwrap();
+
+    // Specialized Regex to parse key-value pairs
+    static ref KV_REGEX: Regex = Regex::new(r#"(?P<key>\w+)=(?P<value>"[^"]*"|\S+)"#).unwrap();
 }
 
 // CLI DEFINITIONS
@@ -43,23 +49,35 @@ fn parse_line(line: &str, year: i32) -> Option<LogEntry> {
     
     // Core parsing logic 
     LOG_REGEX.captures(line).and_then(|caps| {
-        // Extract the raw timestamp string from the regex capture
+            /*
+        Extract the raw tmestamp string from the regex capture, prepend the year,
+        and use chrono to parse the timestamp into a DateTime<Local> object.
+                            */
         let raw_timestamp_str = &caps["timestamp"];
-
-        // Prepend the year to the raw timestamp string
         let with_year = format!("{}-{}", year, raw_timestamp_str);
-        
-        // Use chrono to parse the timestamp with the year
         let naive_dt = NaiveDateTime::parse_from_str(&with_year, "%Y-%m-%d|%H:%M:%S%.f").ok()?;
-
-        // Convert NaiveDateTime to DateTime<Local>
         let local_dt = naive_dt.and_local_timezone(Local).single()?;
 
-        // Construct and return the LogEntry
+        // Extract other fields under message
+        let message = caps["message"].to_string();
+        let mut details = HashMap::new();
+        for kv_caps in KV_REGEX.captures_iter(&message) {
+            let key = kv_caps["key"].to_string(); 
+            let mut value = kv_caps["value"].to_string();
+
+            if value.starts_with('"') && value.ends_with('"') {
+                value = value.trim_matches('"').to_string();
+            }
+
+            details.insert(key, value);
+        }
+        
+
         Some(LogEntry{
             level: caps["level"].to_string(),
             timestamp: local_dt,
             message: caps["message"].to_string(),
+            details,
 
         })
     })
@@ -92,7 +110,7 @@ fn run(args: Cli) -> Result<(), Box<dyn std::error::Error>> {
         return Err(format!("Error: The path '{}' is a directory, not a file", args.log_file_path).into());
     }
 
-    // Determine the year to use for log entries
+        // Determine the year to use for log entries
     let year = args.year.unwrap_or_else(|| Local::now().year());
     println!("Using year: {}", year);
 
@@ -112,7 +130,7 @@ fn run(args: Cli) -> Result<(), Box<dyn std::error::Error>> {
             valid_line_count += 1;
 
             if valid_line_count <= 10 {
-                println!("{:?}", log_entry);
+                println!("{:#?}", log_entry);
             }
         }
     }
