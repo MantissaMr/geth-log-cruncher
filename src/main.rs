@@ -35,7 +35,6 @@ struct Cli {
 
 // --- GLOBAL VARIABLES ---
 // Precompiled regex patterns for efficient log parsing.
-
 lazy_static! {
     // Regex to capture the main components of a log line
     static ref LOG_REGEX: Regex = Regex::new(
@@ -196,4 +195,53 @@ fn setup_progress_bar(total_bytes: u64) -> ProgressBar {
             .progress_chars("#>-"),
     );
     pb
+}
+
+// --- UNIT TESTS ---
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_line_happy_path() {
+        let line = "INFO [11-08|10:49:09.123] Imported new block headers count=1 elapsed=2.5s";
+        let year = 2025;
+
+        let result = parse_line(line, year);
+
+        let log_entry = result.unwrap();
+
+        assert_eq!(log_entry.level, "INFO");
+        assert_eq!(log_entry.details.get("count"), Some(&"1".to_string()));
+    }
+
+    #[test]
+    fn test_parse_line_no_kv_pairs() {
+        let line = "INFO [11-08|10:49:41] Block synchronisation started ";
+        let year = 2025;
+        let result = parse_line(line, year);
+        
+        assert!(result.is_some()); 
+        let log_entry = result.unwrap();
+        assert!(log_entry.details.is_empty()); 
+    }
+
+    #[test]
+    fn test_parse_line_no_milliseconds_or_space() {
+        let line = "DEBUG[11-08|10:49:09] Recalculated downloader QoS values";
+        let year = 2025;
+        let result = parse_line(line, year);
+        
+        assert!(result.is_some()); 
+        assert_eq!(result.unwrap().level, "DEBUG");
+    }
+
+    #[test]
+    fn test_parse_line_garbage_input() {
+        let line = "this is not a valid log line";
+        let year = 2025;
+        let result = parse_line(line, year);
+        
+        assert!(result.is_none());
+    }
 }
