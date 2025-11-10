@@ -28,19 +28,19 @@ geth-log-cruncher /path/to/archive/geth-2023.log --year 2023 > parsed_2023_logs.
 
 ### Filtering with jq
 
-Example: show only `ERROR`-level logs:
+Example: show only `DEBUG`-level logs:
 
 ```bash
-geth-log-cruncher /path/to/your/geth.log | jq 'select(.level == "ERROR")'
+geth-log-cruncher /path/to/your/geth.log | jq 'select(.level == "DEBUG")'
 ```
 
 ### Example pipeline
 
-Write parsed output to a file, then count ERRORs:
+Write parsed output to a file, then count INFO logs:
 
 ```bash
 geth-log-cruncher /var/log/geth.log > /tmp/geth.jsonl
-jq '.level' /tmp/geth.jsonl | grep -c '"ERROR"'
+jq '.level' /tmp/geth.jsonl | grep -c '"DEBUG"'
 ```
 
 ## Output format
@@ -48,7 +48,7 @@ jq '.level' /tmp/geth.jsonl | grep -c '"ERROR"'
 Typical fields:
 
 * `timestamp` — ISO 8601 timestamp (reconstructed using `--year` when needed).  
-* `level` — log level when present (e.g., `INFO`, `WARN`, `ERROR`).  
+* `level` — log level when present (e.g., `INFO`, `WARN`, `DEBUG`).  
 * `message` — the raw log message text.  
 * `details` — an object of parsed KV pairs extracted from the message (flexible and sparse).
 
@@ -58,7 +58,7 @@ A sample parsed line might look like:
 ```json
 {
   "timestamp": "2023-07-01T12:34:56Z",
-  "level": "ERROR",
+  "level": "DEBUG",
   "message": "failed to download block",
   "details": {
     "block": "0xabc123",
